@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.db import models
 from .models import Profile
@@ -24,10 +25,7 @@ class UserSerializer(serializers.ModelSerializer):
         profile.address = profile_data.get('address', profile.address)
         profile.date_of_birth = profile_data.get('date_of_birth', profile.date_of_birth)
         profile.save()
-        print(f"Updated User: {instance.profile.address}")
-        print(f"Updated Profile: phone_number={profile.phone_number}, address={profile.address}, date_of_birth={profile.date_of_birth}")
-
-
+     
         return instance
 class RegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -54,3 +52,25 @@ class RegistrationSerializer(serializers.ModelSerializer):
             }
         )
         return user
+    
+
+class UserLoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        username = data.get('username')
+        password = data.get('password')
+
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if user:
+                if not user.is_active:
+                    raise serializers.ValidationError('User account is disabled.')
+            else:
+                raise serializers.ValidationError('Invalid credentials.')
+        else:
+            raise serializers.ValidationError('Must include "username" and "password".')
+
+        data['user'] = user
+        return data
